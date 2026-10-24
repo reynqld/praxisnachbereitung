@@ -10,7 +10,6 @@ class DeviceCreate(BaseModel):
   serial_number: str
   device_type_id: int
   location_id: int
-  note: str | None = None
 
 
 class AssignmentCreate(BaseModel):

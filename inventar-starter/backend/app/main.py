@@ -3,9 +3,11 @@ from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
 import os
 from .db import get_conn
+from .routes import router
 import paho.mqtt.client as mqtt
 
 app = FastAPI(title="Inventar Starter", version="0.1.0")
+app.include_router(router)
 templates = Jinja2Templates(directory=os.path.join(os.path.dirname(__file__), "templates"))
 
 MQTT_HOST = os.getenv("MQTT_HOST", "mqtt")

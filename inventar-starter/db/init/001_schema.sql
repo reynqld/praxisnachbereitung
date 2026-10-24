@@ -29,7 +29,9 @@ CREATE TABLE device (
 CREATE TABLE assignment (
     id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     device_id   BIGINT NOT NULL REFERENCES device(id),
-    person_id   BIGINT NOT NULL REFERENCES person(id)
+    person_id   BIGINT NOT NULL REFERENCES person(id),
+    issued_at   TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    returned_at TIMESTAMPTZ
 );
 
 
