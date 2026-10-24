@@ -43,7 +43,81 @@ async def index(request: Request):
 
 @app.get("/inventory", response_class=HTMLResponse)
 async def inventory_page(request: Request):
-    return templates.TemplateResponse("inventory.html", {"request": request, "title": "Inventar Starter"})
+    with get_conn() as conn, conn.cursor() as cur:
+        cur.execute(
+            """
+            SELECT
+                d.id,
+                d.serial_number,
+                dt.name AS device_type,
+                l.name AS location,
+                CASE
+                    WHEN EXISTS (
+                        SELECT 1
+                        FROM assignment a
+                        WHERE a.device_id = d.id AND a.returned_at IS NULL
+                    ) THEN 'ausgeliehen'
+                    ELSE 'frei'
+                END AS status
+            FROM device d
+            JOIN device_type dt ON dt.id = d.device_type_id
+            JOIN location l ON l.id = d.location_id
+            ORDER BY d.id
+            """
+        )
+        devices = cur.fetchall()
+
+        cur.execute("SELECT id, name FROM device_type ORDER BY name")
+        device_types = cur.fetchall()
+
+        cur.execute("SELECT id, name FROM location ORDER BY name")
+        locations = cur.fetchall()
+
+        cur.execute("SELECT id, name FROM person ORDER BY name")
+        persons = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT d.id, d.serial_number
+            FROM device d
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM assignment a
+                WHERE a.device_id = d.id AND a.returned_at IS NULL
+            )
+            ORDER BY d.serial_number
+            """
+        )
+        available_devices = cur.fetchall()
+
+        cur.execute(
+            """
+            SELECT
+                a.id,
+                d.serial_number,
+                p.name AS person_name
+            FROM assignment a
+            JOIN device d ON d.id = a.device_id
+            JOIN person p ON p.id = a.person_id
+            WHERE a.returned_at IS NULL
+            ORDER BY a.id
+            """
+        )
+        active_assignments = cur.fetchall()
+
+    return templates.TemplateResponse(
+        "inventory.html",
+        {
+            "request": request,
+            "title": "Inventar",
+            "devices": devices,
+            "device_types": device_types,
+            "locations": locations,
+            "persons": persons,
+            "available_devices": available_devices,
+            "active_assignments": active_assignments,
+        },
+    )
 
 @app.post("/mqtt/publish")
 async def mqtt_publish(topic: str = Query(...), payload: str = Query(...)):

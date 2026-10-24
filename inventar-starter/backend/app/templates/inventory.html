@@ -7,28 +7,153 @@
     <style>
       :root { font-family: -apple-system, system-ui, Segoe UI, Roboto, Ubuntu, Cantarell, Helvetica, Arial; }
       body { margin: 0; padding: 2rem; background: #f3f4f6; }
-      .card { max-width: 920px; margin: 2rem auto; padding: 2rem; background: white; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.05); }
+      main { max-width: 920px; margin: 0 auto; }
+      section { margin-bottom: 1.5rem; padding: 1.5rem; background: white; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.05); }
       h1, h2 { margin-top: 0; }
-      code { background: #f6f8fa; padding: .15rem .35rem; border-radius: 4px; }
-      ul { padding-left: 1.2rem; }
-      .hint { color: #4b5563; }
-      .box { margin-top: 1.5rem; padding: 1rem 1.25rem; border: 1px solid #e5e7eb; border-radius: 12px; background: #f9fafb; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: .65rem; border-bottom: 1px solid #e5e7eb; text-align: left; }
+      label { display: block; margin-top: .75rem; }
+      input, select { width: 100%; box-sizing: border-box; padding: .55rem; border: 1px solid #d1d5db; border-radius: 8px; }
+      button { padding: .5rem .9rem; border: 1px solid #d1d5db; border-radius: 8px; background: white; cursor: pointer; }
+      form > button { margin-top: .75rem; }
     </style>
   </head>
   <body>
-    <div class="card">
-      <h1>Inventar Starter</h1>
-      <p class="hint">Diese Seite ist bewusst nur ein Platzhalter. Ihr ergänzt hier im Laufe der Übung eure Inventar-Oberfläche.</p>
+    <main>
+      <section>
+        <h1>Inventar</h1>
+        <table>
+          <thead>
+            <tr>
+              <th>Seriennummer</th>
+              <th>Typ</th>
+              <th>Standort</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for device in devices %}
+              <tr>
+                <td>{{ device.serial_number }}</td>
+                <td>{{ device.device_type }}</td>
+                <td>{{ device.location }}</td>
+                <td>{{ device.status }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
 
-      <div class="box">
-        <h2>Nächste Schritte</h2>
-        <ul>
-          <li>Ergänzt euer Inventar-Schema in <code>db/init/010_inventory_schema.sql</code>.</li>
-          <li>Legt Endpunkte für <code>/devices</code> und <code>/assignments</code> an.</li>
-          <li>Baut hier eine einfache Übersicht für Geräte und Ausleihen.</li>
-          <li>Nutzt den <code>grades-starter</code> als Referenz für Formulare, Templates und CRUD-Muster.</li>
-        </ul>
-      </div>
-    </div>
+      <section>
+        <h2>Gerät hinzufügen</h2>
+        <form id="device-form">
+          <label for="serial-number">Seriennummer</label>
+          <input id="serial-number" required />
+
+          <label for="device-type">Typ</label>
+          <select id="device-type" required>
+            {% for device_type in device_types %}
+              <option value="{{ device_type.id }}">{{ device_type.name }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="location">Standort</label>
+          <select id="location" required>
+            {% for location in locations %}
+              <option value="{{ location.id }}">{{ location.name }}</option>
+            {% endfor %}
+          </select>
+
+          <button type="submit">Hinzufügen</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Gerät ausgeben</h2>
+        <form id="assignment-form">
+          <label for="person">Person</label>
+          <select id="person" required>
+            {% for person in persons %}
+              <option value="{{ person.id }}">{{ person.name }}</option>
+            {% endfor %}
+          </select>
+
+          <label for="device">Verfügbares Gerät</label>
+          <select id="device" required>
+            {% for device in available_devices %}
+              <option value="{{ device.id }}">{{ device.serial_number }}</option>
+            {% endfor %}
+          </select>
+
+          <button type="submit">Ausgeben</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Aktive Ausleihen</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Gerät</th>
+              <th>Person</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for assignment in active_assignments %}
+              <tr>
+                <td>{{ assignment.serial_number }}</td>
+                <td>{{ assignment.person_name }}</td>
+                <td><button type="button" onclick="returnAssignment({{ assignment.id }})">Zurückgeben</button></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </main>
+
+    <script>
+      document.getElementById("device-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const response = await fetch("/devices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            serial_number: document.getElementById("serial-number").value,
+            device_type_id: Number(document.getElementById("device-type").value),
+            location_id: Number(document.getElementById("location").value)
+          })
+        });
+
+        if (response.ok) location.reload();
+        else alert((await response.json()).detail);
+      });
+
+      document.getElementById("assignment-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const response = await fetch("/assignments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            person_id: Number(document.getElementById("person").value),
+            device_id: Number(document.getElementById("device").value)
+          })
+        });
+
+        if (response.ok) location.reload();
+        else alert((await response.json()).detail);
+      });
+
+      async function returnAssignment(assignmentId) {
+        const response = await fetch(`/assignments/${assignmentId}/return`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}"
+        });
+
+        if (response.ok) location.reload();
+        else alert((await response.json()).detail);
+      }
+    </script>
   </body>
 </html>
