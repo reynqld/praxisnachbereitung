@@ -1,5 +1,8 @@
 from datetime import datetime, timezone
+import json
+import os
 
+import paho.mqtt.client as mqtt
 import psycopg
 from fastapi import APIRouter, HTTPException, status
 
@@ -8,6 +11,13 @@ from .models import AssignmentCreate, AssignmentReturn, DeviceCreate
 
 
 router = APIRouter()
+
+
+def publish_assignment_event(topic: str, assignment: dict):
+    client = mqtt.Client()
+    client.connect(os.getenv("MQTT_HOST", "mqtt"), int(os.getenv("MQTT_PORT", "1883")))
+    client.publish(topic, json.dumps(assignment, default=str), qos=0)
+    client.disconnect()
 
 
 def parse_datetime(value: str | None) -> datetime:
@@ -113,12 +123,18 @@ def create_assignment(assignment: AssignmentCreate):
                 """,
                 (assignment.device_id, assignment.person_id, issued_at),
             )
-            return cur.fetchone()
+            created_assignment = cur.fetchone()
     except psycopg.errors.ForeignKeyViolation as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Die Person existiert nicht",
         ) from exc
+
+    publish_assignment_event(
+        "inventory/assignments/issued",
+        created_assignment,
+    )
+    return created_assignment
 
 
 @router.post("/assignments/{assignment_id}/return")
@@ -158,4 +174,10 @@ def return_assignment(assignment_id: int, assignment_return: AssignmentReturn):
             """,
             (returned_at, assignment_id),
         )
-        return cur.fetchone()
+        returned_assignment = cur.fetchone()
+
+    publish_assignment_event(
+        "inventory/assignments/returned",
+        returned_assignment,
+    )
+    return returned_assignment
