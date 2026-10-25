@@ -57,3 +57,10 @@ Publish über die API:
 ```bash
 curl -X POST "http://localhost:8000/mqtt/publish?topic=inventory/test&payload=hello"
 ```
+
+## Datenbankmigrationen
+
+Schemaaenderungen werden mit Alembic verwaltet. Die Migrationen und die
+Dokumentation zur neuen Schadensbeschreibung bei einer Geraeterueckgabe stehen
+in [`backend/migrations/`](backend/migrations/) und
+[`MIGRATIONS.md`](MIGRATIONS.md).
